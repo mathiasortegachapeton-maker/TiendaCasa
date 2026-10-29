@@ -261,12 +261,19 @@ export default function App() {
         settings={settings}
       />
 
-      {/* Modal de Configuración */}
+      {/* Modal de Configuración y Gestión Local */}
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         settings={settings}
         onSaveSettings={handleSaveSettings}
+        onDataReloaded={() => {
+          setProducts(loadProducts());
+          setSales(loadSales());
+          setExpenses(loadExpenses());
+          setSettings(loadSettings());
+          showToast('Datos locales del navegador actualizados');
+        }}
       />
     </div>
   );

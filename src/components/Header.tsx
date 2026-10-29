@@ -52,9 +52,12 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 Abarrotes & Casa
               </span>
+              <span className="text-[10px] font-medium text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700 hidden sm:inline-flex items-center gap-1" title="Tus registros se guardan únicamente en la memoria de este navegador">
+                🔒 Solo en este navegador
+              </span>
             </div>
             <p className="text-xs text-slate-400">
-              Ventas rápidas, Libro Diario y conexión a WhatsApp
+              Ventas rápidas, Libro Diario y conexión a WhatsApp (LocalStorage privado)
             </p>
           </div>
         </div>

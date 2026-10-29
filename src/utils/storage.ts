@@ -187,27 +187,28 @@ export function saveProducts(products: Product[]): void {
 export function loadSales(): Sale[] {
   try {
     const data = localStorage.getItem('tienda_casa_sales');
-    if (data) return JSON.parse(data);
+    if (data !== null) return JSON.parse(data);
   } catch (e) {
-    console.error('Error cargando ventas', e);
+    console.error('Error cargando ventas locales', e);
   }
-  return getInitialDemoSales();
+  // Para un nuevo usuario o dispositivo, iniciar con su propia lista vacía e independiente
+  return [];
 }
 
 export function saveSales(sales: Sale[]): void {
   try {
     localStorage.setItem('tienda_casa_sales', JSON.stringify(sales));
   } catch (e) {
-    console.error('Error guardando ventas', e);
+    console.error('Error guardando ventas locales en este navegador', e);
   }
 }
 
 export function loadSettings(): StoreSettings {
   try {
     const data = localStorage.getItem('tienda_casa_settings');
-    if (data) return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+    if (data !== null) return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
   } catch (e) {
-    console.error('Error cargando configuración', e);
+    console.error('Error cargando configuración local', e);
   }
   return DEFAULT_SETTINGS;
 }
@@ -216,48 +217,75 @@ export function saveSettings(settings: StoreSettings): void {
   try {
     localStorage.setItem('tienda_casa_settings', JSON.stringify(settings));
   } catch (e) {
-    console.error('Error guardando configuración', e);
+    console.error('Error guardando configuración local en este navegador', e);
   }
 }
-
-export const DEFAULT_DEMO_EXPENSES: Expense[] = [
-  {
-    id: 'exp-1',
-    date: new Date().toISOString().split('T')[0],
-    time: '08:30',
-    concept: 'Bolsas biodegradables para despacho',
-    category: 'empaques',
-    amount: 1.80,
-    paymentMethod: 'efectivo',
-    notes: 'Paquete de 100 unidades',
-  },
-  {
-    id: 'exp-2',
-    date: new Date().toISOString().split('T')[0],
-    time: '10:15',
-    concept: 'Flete transporte de bultos de azúcar y arroz',
-    category: 'transporte',
-    amount: 3.50,
-    paymentMethod: 'transferencia',
-    notes: 'Reparto mayorista a domicilio',
-  },
-];
 
 export function loadExpenses(): Expense[] {
   try {
     const data = localStorage.getItem('tienda_casa_expenses');
-    if (data) return JSON.parse(data);
+    if (data !== null) return JSON.parse(data);
   } catch (e) {
-    console.error('Error cargando gastos', e);
+    console.error('Error cargando gastos locales', e);
   }
-  return DEFAULT_DEMO_EXPENSES;
+  // Para un nuevo usuario o dispositivo, iniciar con su propia lista vacía e independiente
+  return [];
 }
 
 export function saveExpenses(expenses: Expense[]): void {
   try {
     localStorage.setItem('tienda_casa_expenses', JSON.stringify(expenses));
   } catch (e) {
-    console.error('Error guardando gastos', e);
+    console.error('Error guardando gastos locales en este navegador', e);
   }
 }
+
+/**
+ * Exporta toda la base de datos de este navegador a un archivo JSON para respaldo
+ */
+export function exportAllLocalData(): string {
+  const payload = {
+    version: '1.0',
+    exportDate: new Date().toISOString(),
+    products: loadProducts(),
+    sales: loadSales(),
+    expenses: loadExpenses(),
+    settings: loadSettings(),
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+/**
+ * Importa y restaura una copia de seguridad en el localStorage de este navegador
+ */
+export function importAllLocalData(jsonString: string): boolean {
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (parsed.products && Array.isArray(parsed.products)) {
+      saveProducts(parsed.products);
+    }
+    if (parsed.sales && Array.isArray(parsed.sales)) {
+      saveSales(parsed.sales);
+    }
+    if (parsed.expenses && Array.isArray(parsed.expenses)) {
+      saveExpenses(parsed.expenses);
+    }
+    if (parsed.settings && typeof parsed.settings === 'object') {
+      saveSettings(parsed.settings);
+    }
+    return true;
+  } catch (e) {
+    console.error('Error al importar copia de seguridad local', e);
+    return false;
+  }
+}
+
+/**
+ * Borra las ventas y gastos locales de este navegador para empezar desde cero
+ */
+export function clearAllLocalSalesAndExpenses(): void {
+  localStorage.removeItem('tienda_casa_sales');
+  localStorage.removeItem('tienda_casa_expenses');
+}
+
 

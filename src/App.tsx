@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { Header } from './components/Header';
 import { QuickSaleView } from './components/QuickSaleView';
 import { OnlineDemandsView } from './components/OnlineDemandsView';
@@ -275,6 +276,9 @@ export default function App() {
           showToast('Datos locales del navegador actualizados');
         }}
       />
+
+      {/* Vercel Web Analytics */}
+      <Analytics />
     </div>
   );
 }

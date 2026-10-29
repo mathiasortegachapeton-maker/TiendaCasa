@@ -1,0 +1,6 @@
+{
+  "name": "TiendaCasa - Ventas y Pedidos WhatsApp",
+  "description": "Gestión fácil de productos de casa, respuestas automáticas a demandas en línea por WhatsApp y registro rápido de ventas diarias.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

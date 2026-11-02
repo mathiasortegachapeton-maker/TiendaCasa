@@ -21,12 +21,28 @@ export function createWhatsAppLink(phone: string, text: string): string {
 }
 
 /**
- * Abre WhatsApp en una nueva pestaña o aplicación nativa
+ * Abre WhatsApp en una nueva pestaña o aplicación nativa de forma segura
  */
 export function openWhatsApp(phone: string, text: string): void {
   const url = createWhatsAppLink(phone, text);
-  window.open(url, '_blank');
+  try {
+    const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      // Si el navegador o iframe bloquea window.open, usar enlace simulado
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  } catch {
+    window.location.href = url;
+  }
 }
+
+export const openWhatsAppChat = openWhatsApp;
 
 /**
  * Genera el texto del comprobante de venta para WhatsApp

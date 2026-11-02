@@ -10,7 +10,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+// En AI Studio / Cloud Run, Nginx escucha en el puerto 8080 y reenvía al applet en el puerto 3000.
+// Si process.env.PORT es 8080, debemos escuchar en el puerto 3000 para evitar colisiones con Nginx.
+const portArgIndex = process.argv.indexOf('--port');
+const portFromArg = portArgIndex !== -1 && process.argv[portArgIndex + 1] ? Number(process.argv[portArgIndex + 1]) : null;
+const envPort = process.env.PORT && process.env.PORT !== '8080' ? Number(process.env.PORT) : null;
+const PORT = portFromArg || envPort || 3000;
 
 app.use(express.json());
 

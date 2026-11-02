@@ -98,5 +98,50 @@ export interface BusinessTip {
   suggestedCombo?: string[];
 }
 
+export type UserRole = 'emprendedor' | 'cliente';
 
+export type StoreCategory = 
+  | 'alimentos_caseros' 
+  | 'abarrotes_hogar' 
+  | 'belleza_cuidado' 
+  | 'ropa_moda' 
+  | 'artesanias_hogar' 
+  | 'bebidas_postres' 
+  | 'servicios';
 
+export interface UserProfile {
+  id: string;
+  role: UserRole;
+  email?: string;
+  name?: string;
+  isGuest?: boolean;
+  phone?: string;
+  storeName?: string;
+  storeCategory?: StoreCategory;
+  registeredAt: string;
+}
+
+export interface StoreListing {
+  id: string;
+  name: string;
+  ownerName: string;
+  email?: string;
+  category: StoreCategory;
+  categoryLabel: string;
+  description: string;
+  whatsappPhone: string;
+  location: string;
+  deliveryInfo?: string;
+  rating?: number;
+  featuredProductsSummary?: string;
+  isUserStore?: boolean;
+  products: Array<{
+    id: string;
+    name: string;
+    price: number;
+    unit: string;
+    description?: string;
+    available?: boolean;
+    category?: string;
+  }>;
+}

@@ -10,31 +10,49 @@ import {
   DollarSign,
   TrendingUp,
   ShoppingBag,
-  BookOpen
+  BookOpen,
+  LogOut
 } from 'lucide-react';
-import { StoreSettings, Sale } from '../types';
+import { StoreSettings, Sale, UserProfile } from '../types';
 
 interface HeaderProps {
   currentTab: 'pos' | 'demands' | 'products' | 'summary' | 'accounting' | 'advisor';
   setCurrentTab: (tab: 'pos' | 'demands' | 'products' | 'summary' | 'accounting' | 'advisor') => void;
   settings: StoreSettings;
+  sales: Sale[];
   todaySales: Sale[];
+  userProfile?: UserProfile | null;
   onOpenSettings: () => void;
   onShareCatalog: () => void;
   onOpenWhatsAppGuide: () => void;
+  onSwitchToClient?: () => void;
+  onOpenRoleModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentTab,
   setCurrentTab,
   settings,
+  sales,
   todaySales,
+  userProfile,
   onOpenSettings,
   onShareCatalog,
   onOpenWhatsAppGuide,
+  onSwitchToClient,
+  onOpenRoleModal,
 }) => {
+  const [metricScope, setMetricScope] = React.useState<'total' | 'today'>('total');
+
+  const totalAll = sales.reduce((acc, s) => acc + s.total, 0);
+  const profitAll = sales.reduce((acc, s) => acc + s.profit, 0);
+
   const totalToday = todaySales.reduce((acc, s) => acc + s.total, 0);
   const profitToday = todaySales.reduce((acc, s) => acc + s.profit, 0);
+
+  const displayedTotal = metricScope === 'total' ? totalAll : totalToday;
+  const displayedProfit = metricScope === 'total' ? profitAll : profitToday;
+  const displayedCount = metricScope === 'total' ? sales.length : todaySales.length;
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-md">
@@ -52,26 +70,52 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 Abarrotes & Casa
               </span>
-              <span className="text-[10px] font-medium text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700 hidden sm:inline-flex items-center gap-1" title="Tus registros se guardan únicamente en la memoria de este navegador">
-                🔒 Solo en este navegador
+              <span className="text-[10px] font-medium text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700 hidden sm:inline-flex items-center gap-1" title="Tus registros se guardan permanentemente en la memoria de este navegador">
+                💾 Guardado Permanente
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Ventas rápidas, Libro Diario y conexión a WhatsApp (LocalStorage privado)
+              Ventas, Libro Diario y WhatsApp (Datos permanentes en tu dispositivo)
             </p>
           </div>
         </div>
 
-        {/* Resumen rápido de hoy y botones */}
-        <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto py-1">
+        {/* Resumen con selector Historial Total vs Solo Hoy */}
+        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto py-1">
+          {/* Selector de vista de métricas */}
+          <div className="flex items-center bg-slate-800 p-0.5 rounded-xl border border-slate-700/80 text-[11px] font-semibold">
+            <button
+              onClick={() => setMetricScope('total')}
+              className={`px-2.5 py-1 rounded-lg transition-colors ${
+                metricScope === 'total'
+                  ? 'bg-emerald-600 text-white font-bold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Acumulado ({sales.length})
+            </button>
+            <button
+              onClick={() => setMetricScope('today')}
+              className={`px-2.5 py-1 rounded-lg transition-colors ${
+                metricScope === 'today'
+                  ? 'bg-emerald-600 text-white font-bold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Hoy ({todaySales.length})
+            </button>
+          </div>
+
           <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/60">
             <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
               <DollarSign className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <span className="text-[10px] text-slate-400 uppercase font-medium block leading-none">Hoy</span>
+              <span className="text-[10px] text-slate-400 uppercase font-medium block leading-none">
+                {metricScope === 'total' ? 'Total Histórico' : 'Ventas Hoy'}
+              </span>
               <span className="text-sm font-bold text-emerald-400">
-                {settings.currencySymbol}{totalToday.toFixed(2)}
+                {settings.currencySymbol}{displayedTotal.toFixed(2)}
               </span>
             </div>
           </div>
@@ -83,12 +127,23 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="text-left">
               <span className="text-[10px] text-slate-400 uppercase font-medium block leading-none">Ganancia</span>
               <span className="text-sm font-bold text-teal-300">
-                {settings.currencySymbol}{profitToday.toFixed(2)}
+                {settings.currencySymbol}{displayedProfit.toFixed(2)}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 pl-1">
+            {onSwitchToClient && (
+              <button
+                onClick={onSwitchToClient}
+                title="Ver directorio de tiendas como cliente"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500 text-teal-300 hover:text-slate-950 border border-teal-500/30 text-xs font-bold shadow-sm transition-all"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Vista Clientes</span>
+              </button>
+            )}
+
             <button
               onClick={onOpenWhatsAppGuide}
               title="¿Cómo conectar con WhatsApp?"
@@ -114,6 +169,16 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <SettingsIcon className="w-4 h-4" />
             </button>
+
+            {onOpenRoleModal && (
+              <button
+                onClick={onOpenRoleModal}
+                title="Cambiar de rol o usuario"
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>

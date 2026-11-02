@@ -9,7 +9,9 @@ import { SettingsModal } from './components/SettingsModal';
 import { AccountingView } from './components/AccountingView';
 import { ProfitAdvisorView } from './components/ProfitAdvisorView';
 import { WhatsAppGuideModal } from './components/WhatsAppGuideModal';
-import { Product, Sale, StoreSettings, Expense } from './types';
+import { RoleOnboardingModal } from './components/RoleOnboardingModal';
+import { ClientMarketplaceView } from './components/ClientMarketplaceView';
+import { Product, Sale, StoreSettings, Expense, UserProfile, UserRole, StoreListing, StoreCategory } from './types';
 import { 
   loadProducts, 
   saveProducts, 
@@ -18,7 +20,13 @@ import {
   loadSettings, 
   saveSettings,
   loadExpenses,
-  saveExpenses
+  saveExpenses,
+  loadUserProfile,
+  saveUserProfile,
+  clearUserProfile,
+  loadDirectoryStores,
+  getLocalDateString,
+  getLocalTimeString
 } from './utils/storage';
 
 export default function App() {
@@ -28,7 +36,15 @@ export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [settings, setSettings] = useState<StoreSettings>(loadSettings());
   
-  // Modales
+  // Estado de Perfil y Rol
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [currentRole, setCurrentRole] = useState<UserRole>('emprendedor');
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+
+  // Directorio de tiendas para clientes
+  const [communityStores, setCommunityStores] = useState<StoreListing[]>([]);
+
+  // Modales adicionales
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isWhatsAppGuideOpen, setIsWhatsAppGuideOpen] = useState(false);
@@ -43,13 +59,73 @@ export default function App() {
 
   // Carga inicial
   useEffect(() => {
-    setProducts(loadProducts());
-    setSales(loadSales());
-    setExpenses(loadExpenses());
-    setSettings(loadSettings());
+    const loadedProds = loadProducts();
+    const loadedSales = loadSales();
+    const loadedExpenses = loadExpenses();
+    const loadedSettings = loadSettings();
+    const loadedProfile = loadUserProfile();
+
+    setProducts(loadedProds);
+    setSales(loadedSales);
+    setExpenses(loadedExpenses);
+    setSettings(loadedSettings);
+    setUserProfile(loadedProfile);
+
+    if (loadedProfile) {
+      setCurrentRole(loadedProfile.role);
+    } else {
+      // Si entra por primera vez, mostramos la pantalla de selección de rol
+      setIsRoleModalOpen(true);
+    }
+
+    // Inicializar tiendas comunitarias sincronizando la tienda local
+    const initialStores = loadDirectoryStores({
+      settings: loadedSettings,
+      products: loadedProds,
+      profile: loadedProfile,
+    });
+    setCommunityStores(initialStores);
   }, []);
 
-  // Manejadores de gastos
+  // Sincronizar directorio de tiendas cada vez que cambien productos, settings o perfil
+  useEffect(() => {
+    const updated = loadDirectoryStores({
+      settings,
+      products,
+      profile: userProfile,
+    });
+    setCommunityStores(updated);
+  }, [settings, products, userProfile]);
+
+  // Manejador de Registro / Elección de Rol
+  const handleSelectRoleAndSave = (
+    profile: UserProfile, 
+    extraStoreInfo?: { storeName: string; category: StoreCategory; phone: string }
+  ) => {
+    saveUserProfile(profile);
+    setUserProfile(profile);
+    setCurrentRole(profile.role);
+    setIsRoleModalOpen(false);
+
+    if (extraStoreInfo) {
+      const updatedSettings: StoreSettings = {
+        ...settings,
+        storeName: extraStoreInfo.storeName || settings.storeName,
+        whatsappPhone: extraStoreInfo.phone || settings.whatsappPhone,
+        ownerName: profile.name || settings.ownerName,
+      };
+      setSettings(updatedSettings);
+      saveSettings(updatedSettings);
+    }
+
+    showToast(
+      profile.role === 'emprendedor'
+        ? `¡Bienvenido al panel de tu tienda!`
+        : `¡Bienvenido al directorio de tiendas de emprendedores!`
+    );
+  };
+
+  // Manejador de gastos
   const handleAddExpense = (expData: Omit<Expense, 'id'>) => {
     const newExpense: Expense = {
       ...expData,
@@ -103,8 +179,8 @@ export default function App() {
   // Registrar venta
   const handleRegisterSale = (saleData: Omit<Sale, 'id' | 'timestamp' | 'date' | 'time'>): Sale => {
     const now = new Date();
-    const dateStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+    const dateStr = getLocalDateString(now);
+    const timeStr = getLocalTimeString(now);
 
     const newSale: Sale = {
       ...saleData,
@@ -132,23 +208,21 @@ export default function App() {
     setSales(updatedSales);
     saveSales(updatedSales);
 
-    showToast(`¡Venta de ${settings.currencySymbol}${newSale.total.toFixed(2)} registrada!`);
+    showToast(`¡Venta de ${settings.currencySymbol}${newSale.total.toFixed(2)} guardada permanentemente!`);
     return newSale;
   };
 
   // Eliminar venta
   const handleDeleteSale = (saleId: string) => {
-    if (confirm('¿Deseas anular esta venta del registro diario?')) {
-      const updated = sales.filter(s => s.id !== saleId);
-      setSales(updated);
-      saveSales(updated);
-      showToast('Venta anulada del registro');
-    }
+    const updated = sales.filter(s => s.id !== saleId);
+    setSales(updated);
+    saveSales(updated);
+    showToast('Venta anulada del registro permanente');
   };
 
   // Limpiar ventas de hoy
   const handleClearTodaySales = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
     const updated = sales.filter(s => s.date !== todayStr);
     setSales(updated);
     saveSales(updated);
@@ -163,7 +237,7 @@ export default function App() {
   };
 
   // Ventas de hoy para el header
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   const todaySales = sales.filter(s => s.date === todayStr);
 
   return (
@@ -176,75 +250,100 @@ export default function App() {
         </div>
       )}
 
-      {/* Header Principal */}
-      <Header
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        settings={settings}
-        todaySales={todaySales}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
-        onShareCatalog={() => setIsCatalogModalOpen(true)}
-        onOpenWhatsAppGuide={() => setIsWhatsAppGuideOpen(true)}
-      />
-
-      {/* Contenido según pestaña activa */}
-      <main className="flex-1 pb-16">
-        {currentTab === 'pos' && (
-          <QuickSaleView
-            products={products}
+      {/* Renderizado Condicional según el Rol: Cliente o Emprendedor */}
+      {currentRole === 'cliente' ? (
+        <ClientMarketplaceView
+          userProfile={userProfile}
+          stores={communityStores}
+          currencySymbol={settings.currencySymbol}
+          onSwitchToEntrepreneur={() => setCurrentRole('emprendedor')}
+          onOpenRoleModal={() => setIsRoleModalOpen(true)}
+        />
+      ) : (
+        <>
+          {/* Header Principal de Emprendedor */}
+          <Header
+            currentTab={currentTab}
+            setCurrentTab={setCurrentTab}
             settings={settings}
-            onRegisterSale={handleRegisterSale}
-          />
-        )}
-
-        {currentTab === 'demands' && (
-          <OnlineDemandsView
-            products={products}
-            settings={settings}
-            onRegisterSale={handleRegisterSale}
-          />
-        )}
-
-        {currentTab === 'products' && (
-          <ProductsView
-            products={products}
-            settings={settings}
-            onAddProduct={handleAddProduct}
-            onUpdateProduct={handleUpdateProduct}
-            onDeleteProduct={handleDeleteProduct}
+            sales={sales}
+            todaySales={todaySales}
+            userProfile={userProfile}
+            onOpenSettings={() => setIsSettingsModalOpen(true)}
             onShareCatalog={() => setIsCatalogModalOpen(true)}
+            onOpenWhatsAppGuide={() => setIsWhatsAppGuideOpen(true)}
+            onSwitchToClient={() => setCurrentRole('cliente')}
+            onOpenRoleModal={() => setIsRoleModalOpen(true)}
           />
-        )}
 
-        {currentTab === 'summary' && (
-          <DailySummaryView
-            sales={sales}
-            settings={settings}
-            onDeleteSale={handleDeleteSale}
-            onClearTodaySales={handleClearTodaySales}
-          />
-        )}
+          {/* Contenido según pestaña activa del Emprendedor */}
+          <main className="flex-1 pb-16">
+            {currentTab === 'pos' && (
+              <QuickSaleView
+                products={products}
+                settings={settings}
+                onRegisterSale={handleRegisterSale}
+              />
+            )}
 
-        {currentTab === 'accounting' && (
-          <AccountingView
-            sales={sales}
-            expenses={expenses}
-            products={products}
-            settings={settings}
-            onAddExpense={handleAddExpense}
-            onDeleteExpense={handleDeleteExpense}
-          />
-        )}
+            {currentTab === 'demands' && (
+              <OnlineDemandsView
+                products={products}
+                settings={settings}
+                onRegisterSale={handleRegisterSale}
+              />
+            )}
 
-        {currentTab === 'advisor' && (
-          <ProfitAdvisorView
-            products={products}
-            sales={sales}
-            expenses={expenses}
-            settings={settings}
-          />
-        )}
-      </main>
+            {currentTab === 'products' && (
+              <ProductsView
+                products={products}
+                settings={settings}
+                onAddProduct={handleAddProduct}
+                onUpdateProduct={handleUpdateProduct}
+                onDeleteProduct={handleDeleteProduct}
+                onShareCatalog={() => setIsCatalogModalOpen(true)}
+              />
+            )}
+
+            {currentTab === 'summary' && (
+              <DailySummaryView
+                sales={sales}
+                settings={settings}
+                onDeleteSale={handleDeleteSale}
+                onClearTodaySales={handleClearTodaySales}
+              />
+            )}
+
+            {currentTab === 'accounting' && (
+              <AccountingView
+                sales={sales}
+                expenses={expenses}
+                products={products}
+                settings={settings}
+                onAddExpense={handleAddExpense}
+                onDeleteExpense={handleDeleteExpense}
+              />
+            )}
+
+            {currentTab === 'advisor' && (
+              <ProfitAdvisorView
+                products={products}
+                sales={sales}
+                expenses={expenses}
+                settings={settings}
+              />
+            )}
+          </main>
+        </>
+      )}
+
+      {/* Modal para Selección de Rol / Registro */}
+      <RoleOnboardingModal
+        isOpen={isRoleModalOpen}
+        onSelectRoleAndSave={handleSelectRoleAndSave}
+        onClose={() => setIsRoleModalOpen(false)}
+        canCancel={Boolean(userProfile)}
+      />
 
       {/* Modal para Compartir Catálogo en WhatsApp */}
       <CustomerCatalogModal

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Sale, Expense, Product, StoreSettings, PaymentMethod } from '../types';
 import { openWhatsApp } from '../utils/whatsapp';
+import { getLocalDateString, getLocalTimeString } from '../utils/storage';
 
 interface AccountingViewProps {
   sales: Sale[];
@@ -140,8 +141,8 @@ export const AccountingView: React.FC<AccountingViewProps> = ({
 
     const now = new Date();
     onAddExpense({
-      date: now.toISOString().split('T')[0],
-      time: now.toTimeString().split(' ')[0].substring(0, 5),
+      date: getLocalDateString(now),
+      time: getLocalTimeString(now),
       concept: concept.trim(),
       amount: amountNum,
       category,
